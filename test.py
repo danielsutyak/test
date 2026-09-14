@@ -1,0 +1,1 @@
+print("Ich mag die Katzen!")
