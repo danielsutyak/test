@@ -1,0 +1,1 @@
+Generate a blackjack-programm in python! One player plays against a bot! Make the bot have changeable difficulties! Make it so that you can play until you wish to!
