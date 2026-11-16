@@ -5,74 +5,14 @@ how many rounds the player wants to play. Each round uses a fresh shuffled deck.
 At the end, the script prints a session summary with player wins, bot wins, and draws.
 """
 
-import random
+import time
 
-# A standard 52-card deck using suit and rank pairs. Each card is stored as a tuple:
-# (rank, suit), for example ("A", "♥").
-SUITS = ["♠", "♥", "♦", "♣"]
-RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
-CARD_VALUES = {
-    "2": 2,
-    "3": 3,
-    "4": 4,
-    "5": 5,
-    "6": 6,
-    "7": 7,
-    "8": 8,
-    "9": 9,
-    "10": 10,
-    "J": 10,
-    "Q": 10,
-    "K": 10,
-    "A": 11,
-}
-
-
-def get_card_value(card_rank):
-    """Return the numeric value for a given rank."""
-    return CARD_VALUES[card_rank]
-
-
-def calculate_hand_value(hand):
-    """Calculate the hand total while correctly reducing Ace values as needed."""
-    total = 0
-    aces = 0
-
-    for rank, _ in hand:
-        total += get_card_value(rank)
-        if rank == "A":
-            aces += 1
-
-    # If the hand exceeds 21, convert Aces from 11 to 1 until the total is valid.
-    while total > 21 and aces > 0:
-        total -= 10
-        aces -= 1
-
-    return total
-
-
-class Deck:
-    """A shuffled deck that can be drawn from repeatedly."""
-
-    def __init__(self):
-        # Create a full deck of cards and shuffle it once at creation time.
-        self.cards = [(rank, suit) for suit in SUITS for rank in RANKS]
-        random.shuffle(self.cards)
-
-    def draw(self):
-        """Return a card from the deck and reshuffle if the deck is empty."""
-        if not self.cards:
-            self.cards = [(rank, suit) for suit in SUITS for rank in RANKS]
-            random.shuffle(self.cards)
-        return self.cards.pop()
+from blackjack_core import Deck, bot_turn, calculate_hand_value, determine_winner
+from blackjack_ui import clear_terminal, colorize, format_hand, print_round_header, print_session_summary
 
 
 def display_hand(hand, hide_first=False):
-    """Return a readable string version of a hand.
-
-    When hide_first is True, the first card is replaced with [hidden] to simulate a
-    dealer or bot hiding one card.
-    """
+    """Return a readable single-line string for hand output."""
     if not hand:
         return "[]"
 
@@ -83,65 +23,9 @@ def display_hand(hand, hide_first=False):
     return " ".join(f"{rank}{suit}" for rank, suit in hand)
 
 
-def bot_turn(bot_hand, deck, difficulty):
-    """Let the bot decide whether to hit or stand based on its configured difficulty."""
-    bot_total = calculate_hand_value(bot_hand)
-
-    while True:
-        if bot_total > 21:
-            return
-
-        if difficulty == "easy":
-            # Easy bot is cautious but still takes risks. It stands at 18+ and hits
-            # about 55% of the time below that threshold.
-            if bot_total >= 18:
-                return
-            if random.random() < 0.55:
-                bot_hand.append(deck.draw())
-                bot_total = calculate_hand_value(bot_hand)
-                continue
-            return
-
-        if difficulty == "medium":
-            # Medium bot hits until it reaches 17, which gives a balanced challenge.
-            if bot_total >= 17:
-                return
-            bot_hand.append(deck.draw())
-            bot_total = calculate_hand_value(bot_hand)
-            continue
-
-        if difficulty == "hard":
-            # Hard bot is aggressive. It hits more often at lower totals and only stops
-            # at a stronger total, with a small chance of taking a risky draw at mid-range.
-            if bot_total >= 19:
-                return
-            if bot_total <= 11:
-                bot_hand.append(deck.draw())
-                bot_total = calculate_hand_value(bot_hand)
-                continue
-
-            if 12 <= bot_total <= 18:
-                if random.random() < 0.25:
-                    bot_hand.append(deck.draw())
-                    bot_total = calculate_hand_value(bot_hand)
-                    continue
-                return
-
-            bot_hand.append(deck.draw())
-            bot_total = calculate_hand_value(bot_hand)
-            continue
-
-
-def print_round_header(round_number):
-    """Print a separator and a title for each round."""
-    print("\n" + "=" * 30)
-    print(f"Round {round_number}")
-    print("=" * 30)
-
-
 def choose_difficulty():
     """Prompt the user once for the bot difficulty and return the selected level."""
-    print("Choose bot difficulty:")
+    print(colorize("Choose bot difficulty:", "green"))
     print("1) Easy")
     print("2) Medium")
     print("3) Hard")
@@ -169,24 +53,8 @@ def ask_round_count():
             print("Invalid input. Please enter a whole number.")
 
 
-def determine_winner(player_total, bot_total):
-    """Return the winner for a round using standard blackjack rules."""
-    if player_total > 21 and bot_total > 21:
-        return "draw"
-    if player_total > 21:
-        return "bot"
-    if bot_total > 21:
-        return "player"
-    if player_total > bot_total:
-        return "player"
-    if bot_total > player_total:
-        return "bot"
-    return "draw"
-
-
 def play_round(round_number, difficulty):
     """Play one full blackjack round and return the round result."""
-    # Each round gets a brand new shuffled deck to keep the game fair and simple.
     deck = Deck()
     player_hand = [deck.draw(), deck.draw()]
     bot_hand = [deck.draw(), deck.draw()]
@@ -196,8 +64,8 @@ def play_round(round_number, difficulty):
 
     print_round_header(round_number)
     print(f"Bot difficulty: {difficulty.upper()}")
-    print(f"Bot hand: {display_hand(bot_hand, hide_first=True)}")
-    print(f"Your hand: {display_hand(player_hand)} (total: {player_total})")
+    print(f"Bot hand:\n{format_hand(bot_hand, hide_first=True)}")
+    print(f"Your hand:\n{format_hand(player_hand)} (total: {player_total})")
 
     while True:
         action = input("Hit or stand? (h/s): ").strip().lower()
@@ -205,22 +73,21 @@ def play_round(round_number, difficulty):
         if action in {"h", "hit"}:
             player_hand.append(deck.draw())
             player_total = calculate_hand_value(player_hand)
-            print(f"Your hand: {display_hand(player_hand)} (total: {player_total})")
+            print(f"Your hand:\n{format_hand(player_hand)} (total: {player_total})")
 
             if player_total > 21:
                 print("You busted! The bot wins this round.")
-                print(f"Bot final hand: {display_hand(bot_hand)} (total: {bot_total})")
+                print(f"Bot final hand:\n{format_hand(bot_hand)} (total: {bot_total})")
                 return "bot"
         elif action in {"s", "stand"}:
             break
         else:
             print("Invalid input. Please choose h or s.")
 
-    # Reveal the bot's hidden card and finish the bot's turn according to difficulty.
-    print(f"Bot reveals: {display_hand(bot_hand)} (total: {bot_total})")
-    bot_turn(bot_hand, deck, difficulty)
+    print(f"Bot reveals:\n{format_hand(bot_hand)} (total: {bot_total})")
+    bot_turn(bot_hand, deck, difficulty, dealer_upcard=player_hand[0])
     bot_total = calculate_hand_value(bot_hand)
-    print(f"Bot final hand: {display_hand(bot_hand)} (total: {bot_total})")
+    print(f"Bot final hand:\n{format_hand(bot_hand)} (total: {bot_total})")
 
     winner = determine_winner(player_total, bot_total)
     if winner == "player":
@@ -234,13 +101,11 @@ def play_round(round_number, difficulty):
 
 
 def main():
-    """Run the entire blackjack session: one difficulty choice, one round count prompt,
-    then play the requested number of rounds and report the final score.
-    """
-    print("Welcome to Blackjack! You play against a bot.")
+    """Run the entire blackjack session."""
+    clear_terminal()
+    print(colorize("Welcome to Blackjack! You play against a bot.", "magenta"))
     print("Try to get as close to 21 as possible without going over.")
 
-    # Ask each of these only once per program run.
     difficulty = choose_difficulty()
     total_rounds = ask_round_count()
 
@@ -249,6 +114,7 @@ def main():
     draws = 0
 
     for round_number in range(1, total_rounds + 1):
+        clear_terminal()
         winner = play_round(round_number, difficulty)
         if winner == "player":
             player_wins += 1
@@ -257,8 +123,11 @@ def main():
         else:
             draws += 1
 
-    print(f"\nFinal score: You {player_wins} - {bot_wins} Bot | Draws: {draws}")
-    print("Thanks for playing! Goodbye!")
+        if round_number < total_rounds:
+            print("\nRound result displayed. Next round starts in 5 seconds...")
+            time.sleep(5)
+
+    print_session_summary(player_wins, bot_wins, draws)
 
 
 if __name__ == "__main__":

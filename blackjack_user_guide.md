@@ -16,7 +16,7 @@ The goal of the game is to get as close to 21 as possible without going over. Yo
 
 - Easy: more forgiving and less aggressive.
 - Medium: balanced difficulty.
-- Hard: more aggressive and risk-taking.
+- Hard: more aggressive and risk-taking, with a dealer-aware basic strategy that considers the visible card before deciding to hit or stand.
 
 ## Rules
 

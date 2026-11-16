@@ -39,8 +39,8 @@ python .\test\blackjack_game.py
 
 - `calculate_hand_value` handles Ace adjustment and total scoring.
 - `Deck` creates and draws cards from a shuffled deck.
-- `display_hand` formats visible cards and hides the bot's first card.
-- `bot_turn` applies the difficulty-based AI behavior.
+- `basic_strategy_decision` evaluates a hand against the visible dealer card to choose a smarter hit/stand action.
+- `bot_turn` applies the difficulty-based AI behavior, including a dealer-aware strategy in hard mode.
 - `play_round` runs one complete table round.
 - `main` controls session setup and totals across multiple rounds.
 
@@ -48,7 +48,7 @@ python .\test\blackjack_game.py
 
 - Easy: stops at 18+, otherwise hits with a moderate chance.
 - Medium: hits until reaching 17.
-- Hard: more aggressive, especially at low totals.
+- Hard: uses a dealer-aware basic strategy decision model for more realistic play, while still remaining simple and readable.
 
 ### Useful maintenance ideas
 
